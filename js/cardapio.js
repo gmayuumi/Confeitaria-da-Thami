@@ -44,10 +44,39 @@ window.CONFEITARIA = {
     "Os doces são feitos à mão e por encomenda, do brigadeiro tradicional ao morango cravejado. De tempos em tempos tem Festival de Brigadeiros, com mais de dez sabores. Os próximos são anunciados no Instagram.",
   ],
 
+  // Cards da seção "Escolha pela ocasião". Cada um abre uma categoria do cardápio.
+  ocasioes: [
+    { titulo: "Para presentear", categoria: "brigadeiros", ilustracao: "caixinha" },
+    { titulo: "Romântico", categoria: "morangos", ilustracao: "morangodoamor" },
+    { titulo: "Docinho do dia", categoria: "brownies", ilustracao: "brownie" },
+    { titulo: "Café da tarde", categoria: "bolos", ilustracao: "bolo" },
+    { titulo: "Festas", categoria: "encomendas", ilustracao: "festa" },
+  ],
+
+  // Lista da seção "Por que pedir com a Thami?"
+  porque: [
+    {
+      titulo: "Feito à mão, por encomenda",
+      texto: "Cada doce é preparado para o seu pedido, na cozinha da Thami, na Zona Sul de São Paulo.",
+    },
+    {
+      titulo: "Dez anos de docinhos",
+      texto: "Desde 2016 adoçando aniversários, cafés da tarde e presentes.",
+    },
+    {
+      titulo: "Pedido fácil pelo WhatsApp",
+      texto: "Monte a sacola aqui e envie. A Thami confirma o horário, a entrega e o pagamento com você.",
+    },
+    {
+      titulo: "Festival de Brigadeiros",
+      texto: "De tempos em tempos tem festival com mais de dez sabores. Os próximos saem no Instagram.",
+    },
+  ],
+
   categorias: [
     { id: "brigadeiros", nome: "Brigadeiros" },
     { id: "morangos", nome: "Morangos e trufas" },
-    { id: "brownies", nome: "Brownies e palha italiana" },
+    { id: "brownies", nome: "Brownies e palha" },
     { id: "bolos", nome: "Bolos caseiros" },
     { id: "encomendas", nome: "Encomendas e festas" },
   ],
@@ -65,6 +94,7 @@ window.CONFEITARIA = {
    *   foto        (opcional) caminho da foto, ex.: "img/produtos/brownie.jpg"
    *   ilustracao  desenho usado enquanto não há foto
    *   disponivel  false para mostrar como esgotado
+ *   vitrine     true para aparecer em "Nossos queridinhos" (só itens sem tamanhos)
    *
    * Os preços marcados com CONFIRMAR são estimativas. A Thami deve revisar.
    */
@@ -81,6 +111,7 @@ window.CONFEITARIA = {
     },
     {
       id: "brigadeiro-ninho-nutella",
+      vitrine: true,
       categoria: "brigadeiros",
       nome: "Ninho com Nutella",
       descricao: "Brigadeiro de leite Ninho com coração de Nutella.",
@@ -99,6 +130,7 @@ window.CONFEITARIA = {
     },
     {
       id: "caixinha-4-brigadeiros",
+      vitrine: true,
       categoria: "brigadeiros",
       nome: "Caixinha com 4 brigadeiros",
       descricao: "Quatro sabores sortidos numa caixinha pronta para presentear.",
@@ -111,6 +143,7 @@ window.CONFEITARIA = {
     // ---------- Morangos e trufas ----------
     {
       id: "morango-cravejado",
+      vitrine: true,
       categoria: "morangos",
       nome: "Morango cravejado",
       descricao:
@@ -122,6 +155,7 @@ window.CONFEITARIA = {
     },
     {
       id: "trufa-morango-cravejado",
+      vitrine: true,
       categoria: "morangos",
       nome: "Trufa de morango cravejado",
       descricao:
@@ -132,6 +166,7 @@ window.CONFEITARIA = {
     },
     {
       id: "morango-do-amor",
+      vitrine: true,
       categoria: "morangos",
       nome: "Morango do amor recheado",
       descricao: "Morango com recheio cremoso e casquinha vermelha crocante.",
@@ -143,6 +178,7 @@ window.CONFEITARIA = {
     // ---------- Brownies e palha italiana ----------
     {
       id: "brownie-bites",
+      vitrine: true,
       categoria: "brownies",
       nome: "Brownie Bites",
       descricao:
@@ -154,6 +190,7 @@ window.CONFEITARIA = {
     },
     {
       id: "palha-italiana",
+      vitrine: true,
       categoria: "brownies",
       nome: "Palha italiana",
       descricao: "Brigadeiro com biscoito, cortado em quadradinhos e passado no açúcar.",
@@ -165,6 +202,7 @@ window.CONFEITARIA = {
     // ---------- Bolos caseiros ----------
     {
       id: "bolo-de-banana",
+      vitrine: true,
       categoria: "bolos",
       nome: "Bolo de banana",
       descricao: "O bolo de banana mais pedido, perfeito para o café da tarde.",

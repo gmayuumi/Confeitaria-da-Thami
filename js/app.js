@@ -14,8 +14,9 @@
   var produtosPorId = {};
   C.produtos.forEach(function (p) { produtosPorId[p.id] = p; });
 
-  var ICONE_MAIS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
-  var ICONE_MENOS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+  var ICONE_MAIS = '<svg aria-hidden="true"><use href="#i-mais"/></svg>';
+  var ICONE_MENOS = '<svg aria-hidden="true"><use href="#i-menos"/></svg>';
+  var ICONE_BRILHO = '<svg aria-hidden="true"><use href="#i-brilho"/></svg>';
 
   function escapar(txt) {
     return String(txt).replace(/[&<>"']/g, function (c) {
@@ -51,6 +52,14 @@
     return op ? op.preco : produto.preco;
   }
 
+  function precoHtml(p, opcao) {
+    return dinheiro(precoDe(p, opcao)) + (p.unidade ? " <small>" + escapar(p.unidade) + "</small>" : "");
+  }
+
+  function sobConsulta(p) {
+    return p.preco == null && !p.opcoes;
+  }
+
   /* ---------- Sacola ---------- */
 
   // Cada linha: { id, opcao, qtd }. Linhas de produtos removidos do cardápio são descartadas.
@@ -68,6 +77,10 @@
     return null;
   }
 
+  function qtdDe(id) {
+    return sacola.reduce(function (s, l) { return s + (l.id === id ? l.qtd : 0); }, 0);
+  }
+
   function mudarQtd(id, opcao, delta) {
     var l = linha(id, opcao);
     if (!l && delta > 0) {
@@ -80,10 +93,11 @@
     gravar(CHAVE_SACOLA, sacola);
     atualizarTudo();
     if (delta > 0) {
-      var cont = $("[data-contador]");
-      cont.classList.remove("pulou");
-      void cont.offsetWidth;
-      cont.classList.add("pulou");
+      $$("[data-contador]").forEach(function (cont) {
+        cont.classList.remove("pulou");
+        void cont.offsetWidth;
+        cont.classList.add("pulou");
+      });
     }
   }
 
@@ -103,65 +117,67 @@
     return typeof C.entrega.taxa === "number" ? C.entrega.taxa : null;
   }
 
-  /* ---------- Ilustração ou foto ---------- */
+  /* ---------- Foto ou ilustração ---------- */
 
-  function imagem(produto, classe) {
-    var dentro = produto.foto
-      ? '<img src="' + escapar(produto.foto) + '" alt="" loading="lazy">'
-      : '<svg viewBox="0 0 100 100"><use href="#ilu-' + escapar(produto.ilustracao || "brigadeiro") + '"/></svg>';
-    return '<span class="forminha ' + (classe || "") + '" aria-hidden="true">' + dentro + "</span>";
+  function figura(p) {
+    if (p.foto) return '<img src="' + escapar(p.foto) + '" alt="" loading="lazy">';
+    return '<span class="forminha" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#ilu-' +
+      escapar(p.ilustracao || "brigadeiro") + '"/></svg></span>';
+  }
+
+  /* ---------- Filtros do cardápio ---------- */
+
+  var filtroAtual = "todos";
+
+  function filtrar(cat) {
+    filtroAtual = cat;
+    $$("[data-filtros] button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-filtro") === cat ? "true" : "false");
+    });
+    $$("[data-lista] .item").forEach(function (li) {
+      li.hidden = cat !== "todos" && li.getAttribute("data-cat") !== cat;
+    });
+  }
+
+  function montarFiltros() {
+    var cats = C.categorias.filter(function (cat) {
+      return C.produtos.some(function (p) { return p.categoria === cat.id; });
+    });
+
+    $("[data-faixa]").innerHTML = cats.map(function (cat) {
+      return '<a href="#cardapio" data-filtro="' + cat.id + '">' + escapar(cat.nome) + "</a>";
+    }).join("");
+
+    $("[data-filtros]").innerHTML =
+      '<button type="button" data-filtro="todos" aria-pressed="true">Todos</button>' +
+      cats.map(function (cat) {
+        return '<button type="button" data-filtro="' + cat.id + '" aria-pressed="false">' + escapar(cat.nome) + "</button>";
+      }).join("");
+
+    // Links com data-filtro (faixa do topo, cards de ocasião) e botões dos filtros.
+    document.addEventListener("click", function (ev) {
+      var el = ev.target.closest("[data-filtro]");
+      if (el) filtrar(el.getAttribute("data-filtro"));
+    });
   }
 
   /* ---------- Cardápio ---------- */
 
   function montarCardapio() {
-    var nav = $("[data-categorias]");
     var lista = $("[data-lista]");
-    var htmlNav = "";
-    var htmlLista = "";
-
-    C.categorias.forEach(function (cat) {
-      var itens = C.produtos.filter(function (p) { return p.categoria === cat.id; });
-      if (!itens.length) return;
-      htmlNav += '<a href="#cat-' + cat.id + '" data-cat="' + cat.id + '">' + escapar(cat.nome) + "</a>";
-      htmlLista +=
-        '<section class="categoria" id="cat-' + cat.id + '" aria-labelledby="titulo-' + cat.id + '">' +
-        '<h3 id="titulo-' + cat.id + '">' + escapar(cat.nome) + "</h3>" +
-        '<ul class="itens">' + itens.map(itemHtml).join("") + "</ul></section>";
+    var ordem = {};
+    C.categorias.forEach(function (c, i) { ordem[c.id] = i; });
+    var produtos = C.produtos.slice().sort(function (a, b) {
+      return (ordem[a.categoria] || 0) - (ordem[b.categoria] || 0);
     });
-
-    nav.innerHTML = htmlNav;
-    lista.innerHTML = htmlLista;
-
-    lista.addEventListener("click", function (ev) {
-      var btn = ev.target.closest("button[data-acao]");
-      if (!btn) return;
-      var item = btn.closest(".item");
-      var id = item.getAttribute("data-id");
-      var produto = produtosPorId[id];
-      var acao = btn.getAttribute("data-acao");
-      if (acao === "orcamento") {
-        abrirWhatsApp("Olá, Thami! Quero um orçamento de " + produto.nome + ".");
-        return;
-      }
-      var opcao = opcaoSelecionada(item);
-      var tinhaFoco = acao === "menos" && linha(id, opcao) && linha(id, opcao).qtd === 1;
-      mudarQtd(id, opcao, acao === "menos" ? -1 : 1);
-      // Mantém o foco do teclado no controle que substituiu o botão clicado.
-      var alvo = tinhaFoco ? $('[data-acao="mais"]', item) : $('[data-acao="' + acao + '"]', item) || $('[data-acao="mais"]', item);
-      if (alvo) alvo.focus();
-    });
+    lista.innerHTML = produtos.map(itemHtml).join("");
 
     lista.addEventListener("change", function (ev) {
       if (ev.target.matches(".opcoes input")) atualizarItem(ev.target.closest(".item"));
     });
-
-    observarCategorias();
   }
 
   function itemHtml(p) {
-    var preco = p.preco == null && !p.opcoes ? "Sob consulta" : precoHtml(p, p.opcoes ? p.opcoes[0].nome : null);
-
     var opcoes = "";
     if (p.opcoes) {
       opcoes = '<fieldset class="opcoes"><legend>Tamanho de ' + escapar(p.nome) + "</legend>" +
@@ -170,24 +186,18 @@
             "<span>" + escapar(o.nome) + "</span></label>";
         }).join("") + "</fieldset>";
     }
+    var preco = sobConsulta(p) ? "Sob consulta" : precoHtml(p, p.opcoes ? p.opcoes[0].nome : null);
 
     return (
-      '<li class="item" data-id="' + p.id + '">' +
-      imagem(p, "item-foto") +
-      "<div>" +
-      '<h4 class="item-nome">' + escapar(p.nome) + (p.selo ? ' <span class="selo">' + escapar(p.selo) + "</span>" : "") + "</h4>" +
+      '<li class="item" data-id="' + p.id + '" data-cat="' + p.categoria + '">' +
+      '<div class="item-topo"><div class="item-foto">' + figura(p) + "</div>" +
+      (p.selo ? '<span class="selo">' + escapar(p.selo) + "</span>" : "") + "</div>" +
+      "<h3>" + escapar(p.nome) + "</h3>" +
       (p.descricao ? '<p class="item-desc">' + escapar(p.descricao) + "</p>" : "") +
-      "</div>" +
       opcoes +
-      '<div class="item-baixo">' +
-      '<p class="item-preco" data-preco>' + preco + "</p>" +
-      '<div class="item-acao" data-acao-area></div>' +
-      "</div></li>"
+      '<div class="item-baixo"><p class="item-preco" data-preco>' + preco + "</p>" +
+      '<div data-acao-area></div></div></li>'
     );
-  }
-
-  function precoHtml(p, opcao) {
-    return dinheiro(precoDe(p, opcao)) + (p.unidade ? " <small>" + escapar(p.unidade) + "</small>" : "");
   }
 
   function opcaoSelecionada(item) {
@@ -199,24 +209,23 @@
     var id = item.getAttribute("data-id");
     var p = produtosPorId[id];
     var area = $("[data-acao-area]", item);
-    var nome = escapar(p.nome);
 
     if (p.disponivel === false) {
       area.innerHTML = '<span class="esgotado">Esgotado</span>';
       return;
     }
-    if (p.preco == null && !p.opcoes) {
-      area.innerHTML = '<button class="botao botao-linha botao-add" type="button" data-acao="orcamento">Pedir orçamento</button>';
+    if (sobConsulta(p)) {
+      area.innerHTML = '<button class="botao-orcamento" type="button" data-acao="orcamento">Pedir orçamento</button>';
       return;
     }
 
     var opcao = opcaoSelecionada(item);
     if (opcao) $("[data-preco]", item).innerHTML = precoHtml(p, opcao);
     var l = linha(id, opcao);
-    var rotulo = nome + (opcao ? ", " + escapar(opcao) : "");
+    var rotulo = escapar(p.nome) + (opcao ? ", " + escapar(opcao) : "");
 
     if (!l) {
-      area.innerHTML = '<button class="botao botao-primario botao-add" type="button" data-acao="mais" aria-label="Adicionar ' + rotulo + ' à sacola">' + ICONE_MAIS + "Adicionar</button>";
+      area.innerHTML = '<button class="botao-add" type="button" data-acao="mais" aria-label="Adicionar ' + rotulo + ' à sacola">' + ICONE_MAIS + "</button>";
     } else {
       area.innerHTML =
         '<div class="qtd" role="group" aria-label="Quantidade de ' + rotulo + '">' +
@@ -226,28 +235,100 @@
     }
   }
 
-  function observarCategorias() {
-    var links = $$("[data-categorias] a");
-    if (!links.length) return;
-    links[0].setAttribute("aria-current", "true");
-    if (!("IntersectionObserver" in window)) return;
-    var visiveis = {};
-    var obs = new IntersectionObserver(function (entradas) {
-      entradas.forEach(function (e) { visiveis[e.target.id] = e.isIntersecting; });
-      var atual = null;
-      for (var i = 0; i < C.categorias.length; i++) {
-        if (visiveis["cat-" + C.categorias[i].id]) { atual = C.categorias[i].id; break; }
-      }
-      if (!atual) return;
-      links.forEach(function (a) {
-        var ativo = a.getAttribute("data-cat") === atual;
-        a.setAttribute("aria-current", ativo ? "true" : "false");
-        if (ativo && a.parentNode.scrollWidth > a.parentNode.clientWidth) {
-          a.parentNode.scrollTo({ left: a.offsetLeft - 16, behavior: "smooth" });
-        }
+  // Cliques em "+", "−" e "Pedir orçamento" no cardápio e na vitrine.
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("button[data-acao]");
+    if (!btn) return;
+    var card = btn.closest("[data-id]");
+    var id = card.getAttribute("data-id");
+    var produto = produtosPorId[id];
+    var acao = btn.getAttribute("data-acao");
+    if (acao === "orcamento") {
+      abrirWhatsApp("Olá, Thami! Quero um orçamento de " + produto.nome + ".");
+      return;
+    }
+    var noCardapio = card.classList.contains("item");
+    var opcao = noCardapio ? opcaoSelecionada(card) : null;
+    var ultimo = acao === "menos" && linha(id, opcao) && linha(id, opcao).qtd === 1;
+    mudarQtd(id, opcao, acao === "menos" ? -1 : 1);
+    if (noCardapio) {
+      // O controle foi redesenhado: devolve o foco para o botão equivalente.
+      var alvo = ultimo ? $('[data-acao="mais"]', card) : $('[data-acao="' + acao + '"]', card) || $('[data-acao="mais"]', card);
+      if (alvo) alvo.focus();
+    }
+  });
+
+  /* ---------- Vitrine (queridinhos) ---------- */
+
+  function montarVitrine() {
+    var trilho = $("[data-vitrine]");
+    var itens = C.produtos.filter(function (p) {
+      return p.vitrine && !p.opcoes && !sobConsulta(p) && p.disponivel !== false;
+    });
+    trilho.innerHTML = itens.map(function (p) {
+      return (
+        '<li class="vcard" data-id="' + p.id + '">' +
+        '<div class="vcard-foto">' + figura(p) +
+        '<button class="botao-coracao" type="button" data-acao="mais" data-vitrine-botao></button></div>' +
+        "<h3>" + escapar(p.nome) + "</h3>" +
+        "<p>" + dinheiro(p.preco) + (p.unidade ? " / " + escapar(p.unidade) : "") + "</p></li>"
+      );
+    }).join("");
+
+    var setas = $$("[data-rolar]");
+    var conferir = function () {
+      var max = trilho.scrollWidth - trilho.clientWidth - 2;
+      setas[0].disabled = trilho.scrollLeft <= 2;
+      setas[1].disabled = trilho.scrollLeft >= max;
+    };
+    setas.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var card = $(".vcard", trilho);
+        var passo = card ? card.getBoundingClientRect().width + 20 : 240;
+        trilho.scrollBy({ left: Number(b.getAttribute("data-rolar")) * passo, behavior: "smooth" });
       });
-    }, { rootMargin: "-140px 0px -55% 0px" });
-    $$(".categoria").forEach(function (s) { obs.observe(s); });
+    });
+    trilho.addEventListener("scroll", conferir, { passive: true });
+    window.addEventListener("resize", conferir);
+    conferir();
+  }
+
+  function atualizarVitrine() {
+    $$("[data-vitrine-botao]").forEach(function (b) {
+      var id = b.closest("[data-id]").getAttribute("data-id");
+      var nome = produtosPorId[id].nome;
+      var n = qtdDe(id);
+      b.classList.toggle("na-sacola", n > 0);
+      b.innerHTML = n > 0 ? String(n) : ICONE_MAIS;
+      b.setAttribute("aria-label", n > 0
+        ? "Adicionar mais um " + nome + ". Na sacola: " + n
+        : "Adicionar " + nome + " à sacola");
+    });
+  }
+
+  /* ---------- Ocasiões, letreiro e "por que" ---------- */
+
+  function montarOcasioes() {
+    $("[data-ocasioes]").innerHTML = (C.ocasioes || []).map(function (o) {
+      return (
+        '<li class="ocasiao"><a href="#cardapio" data-filtro="' + escapar(o.categoria) + '">' +
+        "<h3>" + escapar(o.titulo) + "</h3>" +
+        '<span class="ocasiao-foto">' + figura({ ilustracao: o.ilustracao }) + "</span></a></li>"
+      );
+    }).join("");
+  }
+
+  function montarLetreiro() {
+    var frases = [C.nome, C.slogan, "Desde " + C.desde, "Zona Sul de SP"];
+    var bloco = frases.map(function (f) { return "<span>" + escapar(f) + "</span>" + ICONE_BRILHO; }).join("");
+    // Repetido para o texto correr sem emenda (a animação anda metade da largura).
+    $("[data-letreiro]").innerHTML = bloco + bloco + bloco + bloco;
+  }
+
+  function montarPorque() {
+    $("[data-porque]").innerHTML = (C.porque || []).map(function (r) {
+      return "<li>" + ICONE_BRILHO + "<h3>" + escapar(r.titulo) + "</h3><p>" + escapar(r.texto) + "</p></li>";
+    }).join("");
   }
 
   /* ---------- Gaveta da sacola ---------- */
@@ -287,8 +368,8 @@
 
   function prenderFoco(ev) {
     if (ev.key !== "Tab" || gaveta.hidden) return;
-    var focaveis = $$("a[href], button:not([disabled]), input, select, textarea, [tabindex='-1']", gaveta).filter(function (el) {
-      return el.offsetParent !== null && el.getAttribute("tabindex") !== "-1";
+    var focaveis = $$("a[href], button:not([disabled]), input, select, textarea", gaveta).filter(function (el) {
+      return el.offsetParent !== null;
     });
     if (!focaveis.length) return;
     var primeiro = focaveis[0];
@@ -303,14 +384,13 @@
   }
 
   function montarItensSacola() {
-    var ul = $("[data-sacola-itens]");
-    ul.innerHTML = sacola.map(function (l, i) {
+    $("[data-sacola-itens]").innerHTML = sacola.map(function (l, i) {
       var p = produtosPorId[l.id];
       var nome = escapar(p.nome);
       var detalhe = l.opcao ? escapar(l.opcao) : dinheiro(p.preco) + (p.unidade ? " / " + escapar(p.unidade) : "");
       return (
         '<li class="sacola-item" data-i="' + i + '">' +
-        imagem(p) +
+        '<span class="sacola-item-foto">' + figura(p) + "</span>" +
         '<p class="sacola-item-nome">' + nome + "<small>" + detalhe + "</small></p>" +
         '<p class="sacola-item-preco">' + dinheiro(precoDe(p, l.opcao) * l.qtd) + "</p>" +
         '<div class="qtd" role="group" aria-label="Quantidade de ' + nome + '">' +
@@ -345,13 +425,19 @@
     var n = totalItens();
     var sub = subtotal();
 
-    $("[data-contador]").textContent = n;
-    $(".botao-sacola").setAttribute("aria-label", "Sacola, " + n + (n === 1 ? " item" : " itens"));
-    $("[data-barra]").hidden = n === 0;
-    document.body.classList.toggle("tem-itens", n > 0);
-    $("[data-barra-resumo]").textContent = n + (n === 1 ? " item, " : " itens, ") + dinheiro(sub);
+    $$("[data-contador]").forEach(function (el) {
+      el.textContent = n;
+      el.hidden = n === 0;
+    });
+    var rotuloSacola = "Sacola, " + n + (n === 1 ? " item" : " itens");
+    $(".botao-sacola").setAttribute("aria-label", rotuloSacola);
+    var barra = $(".barra-sacola");
+    barra.classList.toggle("cheia", n > 0);
+    barra.setAttribute("aria-label", rotuloSacola + (n ? ", " + dinheiro(sub) : ""));
+    $("[data-barra-rotulo]").textContent = n ? dinheiro(sub) : "Sacola";
 
     $$(".item").forEach(atualizarItem);
+    atualizarVitrine();
 
     montarItensSacola();
     $("[data-sacola-vazia]").hidden = n > 0;
@@ -561,12 +647,12 @@
 
   function preencherTextos() {
     if (C.aviso) {
-      $("#aviso").textContent = C.aviso.replace(/R\$ /g, "R$\u00a0");
+      $("#aviso").textContent = C.aviso.replace(/R\$ /g, "R$ ");
       $("#aviso").hidden = false;
     }
     var dias = C.entrega.antecedenciaDias || 0;
     $("[data-antecedencia]").textContent = dias
-      ? "Pedidos com pelo menos " + dias + (dias === 1 ? " dia" : " dias") + " de antecedência."
+      ? "Pedidos com pelo menos " + dias + (dias === 1 ? " dia" : " dias") + " de antecedência. Tudo feito por encomenda, com carinho."
       : "Pedidos para hoje ou para os próximos dias.";
     $("[data-sobre]").innerHTML = C.sobre.map(function (p) { return "<p>" + escapar(p) + "</p>"; }).join("");
 
@@ -576,12 +662,13 @@
       a.target = "_blank";
       a.rel = "noopener";
     });
-    $("[data-instagram-nome]").textContent = "Siga @" + C.instagram + " no Instagram";
+    $("[data-instagram-nome]").textContent = "@" + C.instagram;
 
-    var zap = $("[data-whatsapp-link]");
-    zap.href = linkWhatsApp("Olá, Thami! Vim pelo site.");
-    zap.target = "_blank";
-    zap.rel = "noopener";
+    $$("[data-whatsapp-link]").forEach(function (a) {
+      a.href = linkWhatsApp("Olá, Thami! Vim pelo site.");
+      a.target = "_blank";
+      a.rel = "noopener";
+    });
 
     $$("[data-orcamento]").forEach(function (a) {
       a.addEventListener("click", function (ev) {
@@ -599,7 +686,12 @@
 
   function iniciar() {
     preencherTextos();
+    montarFiltros();
     montarCardapio();
+    montarVitrine();
+    montarOcasioes();
+    montarLetreiro();
+    montarPorque();
     montarFormulario();
     atualizarTudo();
 

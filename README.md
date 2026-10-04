@@ -31,12 +31,19 @@ Tudo fica em `js/cardapio.js`. Cada doce é um bloco assim:
 },
 ```
 
+- **Vitrine "Nossos queridinhos"**: coloque `vitrine: true` no doce (só funciona em doces sem tamanhos).
 - **Esgotou?** Coloque `disponivel: false` no doce.
 - **Tamanhos diferentes?** Use `opcoes` no lugar de `preco` (veja o pavê de abacaxi).
 - **Aviso no topo** (festival, novidade, feriado): edite `aviso`. Deixe `""` para esconder.
 - **Fotos**: coloque o arquivo em `img/produtos/` (quadrado, cerca de 600×600) e adicione `foto: "img/produtos/nome.jpg"` no doce.
 
+As seções "Escolha pela ocasião" (`ocasioes`) e "Por que pedir com a Thami?" (`porque`) também ficam no `js/cardapio.js`.
+
 Ilustrações disponíveis: `brigadeiro`, `ninho`, `bichodepe`, `caixinha`, `morango`, `trufa`, `morangodoamor`, `brownie`, `palha`, `bolo`, `pave`, `fatia`, `festa`.
+
+## Imagens decorativas
+
+As imagens de `img/decor/` (morangos com leite, brownies, bananas, mesa de madeira e calda rosa) foram enviadas como referência visual e tiveram o fundo recortado. Antes de publicar, confira se há licença para uso comercial de cada uma. A dos brownies é uma prévia do pngtree e ainda tem a marca d'água do site. Para trocar, basta salvar outra imagem com o mesmo nome.
 
 ## Como publicar (grátis, pelo GitHub Pages)
 
@@ -62,6 +69,6 @@ index.html          página
 css/style.css       visual
 js/cardapio.js      cardápio, preços e configurações (edite aqui)
 js/app.js           sacola, formulário e mensagem do WhatsApp
-img/                favicon e fotos dos produtos
-fontes/             fontes Shrikhand e Figtree (licença SIL OFL)
+img/                favicon, mascote, fotos dos produtos e imagens decorativas
+fontes/             fontes Rammetto One e Figtree (licença SIL OFL)
 ```
