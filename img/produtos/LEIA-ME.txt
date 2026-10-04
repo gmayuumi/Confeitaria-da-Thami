@@ -1,0 +1,2 @@
+Coloque aqui as fotos dos doces (JPG ou WebP, quadradas, de preferência 600x600).
+Depois, em js/cardapio.js, adicione no produto:  foto: "img/produtos/nome-da-foto.jpg",
